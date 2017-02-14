@@ -471,14 +471,14 @@ wr::sql::IDSetTests::checkContents_(
                                           set.body_->storage_[i], *j);
                 }
                 if (query) {
-                        if (!query.current()) {
+                        if (!query.currentRow()) {
                                 throw TestFailure("SQL access of %s returned %u value(s), expected %u",
                                                   set_name, i + 1,
                                                   expected_contents.size());
-                        } else if (query.current().get<ID>(0) != *j) {
+                        } else if (query.currentRow().get<ID>(0) != *j) {
                                 throw TestFailure("value %u returned by SQL access of %s is %d, expected %d",
                                                   i, set_name,
-                                                  query.current().get<ID>(0),
+                                                  query.currentRow().get<ID>(0),
                                                   *j);
                         }
                         query.next();

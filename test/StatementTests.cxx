@@ -76,10 +76,10 @@ public:
                     nextDuringFetch(),
                     nextIsEnd(),
                     nextAfterFetch(),
-                    currentUnprepared(),
-                    currentBeforeFetch(),
-                    currentDuringFetch(),
-                    currentAfterFetch(),
+                    currentRowUnprepared(),
+                    currentRowBeforeFetch(),
+                    currentRowDuringFetch(),
+                    currentRowAfterFetch(),
                     isActive(),
                     isFinalized(),
                     retrieveSession(),
@@ -168,10 +168,10 @@ wr::sql::StatementTests::runAll()
         run("next", 3, &nextDuringFetch);
         run("next", 4, &nextIsEnd);
         run("next", 5, &nextAfterFetch);
-        run("current", 1, &currentUnprepared);
-        run("current", 2, &currentBeforeFetch);
-        run("current", 3, &currentDuringFetch);
-        run("current", 4, &currentAfterFetch);
+        run("currentRow", 1, &currentRowUnprepared);
+        run("currentRow", 2, &currentRowBeforeFetch);
+        run("currentRow", 3, &currentRowDuringFetch);
+        run("currentRow", 4, &currentRowAfterFetch);
         run("isActive", 1, &isActive);
         run("isFinalized", 1, &isFinalized);
         run("retrieveSession", 1, &retrieveSession);
@@ -675,29 +675,29 @@ wr::sql::StatementTests::nextAfterFetch() // static
 //--------------------------------------
 
 void
-wr::sql::StatementTests::currentUnprepared() // static
+wr::sql::StatementTests::currentRowUnprepared() // static
 {
         Statement stmt;
-        if (stmt.current() != stmt.end()) {
-                throw TestFailure("(stmt.current() != stmt.end()) for unprepared statement");
+        if (stmt.currentRow() != stmt.end()) {
+                throw TestFailure("(stmt.currentRow() != stmt.end()) for unprepared statement");
         }
 }
 
 //--------------------------------------
 
 void
-wr::sql::StatementTests::currentBeforeFetch() // static
+wr::sql::StatementTests::currentRowBeforeFetch() // static
 {
         Statement query(db_, "SELECT * FROM customers");
-        if (query.current() != query.end()) {
-                throw TestFailure("(query.current() != query.end()) before call to begin()");
+        if (query.currentRow() != query.end()) {
+                throw TestFailure("(query.currentRow() != query.end()) before call to begin()");
         }
 }
 
 //--------------------------------------
 
 void
-wr::sql::StatementTests::currentDuringFetch() // static
+wr::sql::StatementTests::currentRowDuringFetch() // static
 {
         Statement query(db_,
                 "SELECT forename FROM employees WHERE surname='Patterson' "
@@ -705,16 +705,16 @@ wr::sql::StatementTests::currentDuringFetch() // static
         Row row(query.begin());
 
         auto expected_forename = row.get<u8string_view>(0);
-        auto current_forename = query.current().get<u8string_view>(0);
+        auto current_forename = query.currentRow().get<u8string_view>(0);
 
         if (current_forename != expected_forename) {
-                throw TestFailure("first call to query.current() returned \"%s\", expected \"%s\"",
+                throw TestFailure("first call to query.currentRow() returned \"%s\", expected \"%s\"",
                                   current_forename, expected_forename);
         }
 
         row = query.next();
         expected_forename = row.get<u8string_view>(0);
-        current_forename = query.current().get<u8string_view>(0);
+        current_forename = query.currentRow().get<u8string_view>(0);
 
         if (current_forename != expected_forename) {
                 throw TestFailure("second row returned is \"%s\", expected \"%s\"",
@@ -725,12 +725,12 @@ wr::sql::StatementTests::currentDuringFetch() // static
 //--------------------------------------
 
 void
-wr::sql::StatementTests::currentAfterFetch() // static
+wr::sql::StatementTests::currentRowAfterFetch() // static
 {
         Statement query(db_, "SELECT * FROM offices WHERE city='Tokyo'");
         query.begin();  // one and only row
         query.next();
-        if (query.current() != query.end()) {
+        if (query.currentRow() != query.end()) {
                 throw TestFailure("(query.next() != query.end()) after last row");
         }
 }
@@ -758,8 +758,8 @@ wr::sql::StatementTests::isActive() // static
                 throw TestFailure("stmt.isActive() returned false during fetch");
         }
 
-        while (stmt.current()) {
-                ++stmt.current();
+        while (stmt.currentRow()) {
+                ++stmt.currentRow();
         }
 
         if (stmt.isActive()) {
@@ -1454,7 +1454,7 @@ wr::sql::StatementTests::moveConstruct() // static
                                   returned);
         }
 
-        Row r2 = query2.current();
+        Row r2 = query2.currentRow();
         ++r2;
         r2.get(0, returned);
 
@@ -1533,7 +1533,7 @@ wr::sql::StatementTests::moveAssign() // static
                                   returned);
         }
 
-        r2 = query2.current();
+        r2 = query2.currentRow();
         ++r2;
         r2.get(0, returned);
 

@@ -394,12 +394,12 @@ public:
         ///@}
 
         /**
-         * \brief get last row fetched
+         * \brief get the most recently-fetched row
          * \return
          *      \c Row object representing current row or a null \c Row
          *      object if the \c Statement object is unprepared or inactive
          */
-        Row current();
+        Row currentRow();
 
         /**
          * \brief fetch next row
