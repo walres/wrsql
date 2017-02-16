@@ -27,6 +27,10 @@ if (NOT TOP_BUILD_DIR)
         set(TOP_BUILD_DIR ${CMAKE_CURRENT_BINARY_DIR})
 endif()
 
+if (UNIX)
+        list(INSERT WRSQL_SYS_LIBS 0 pthread)
+endif()
+
 #########################################
 #
 # Dependencies
@@ -178,7 +182,8 @@ set_target_properties(${TESTS} PROPERTIES
 
 foreach(TEST ${TESTS})
         add_test(${TEST} test/${TEST})
-        target_link_libraries(${TEST} wrsql wrutil wrdebug sqlite3)
+        target_link_libraries(${TEST} wrsql wrutil wrdebug sqlite3
+                              ${WRSQL_SYS_LIBS})
 endforeach(TEST)
 
 ########################################
