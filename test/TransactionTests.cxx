@@ -149,7 +149,7 @@ wr::sql::TransactionTests::begin() // static
         if (txn.active()) {
                 throw TestFailure("txn.active() returned true after completion, expected false");
         }
-        if (db_.exec("SELECT id FROM foo").current().get<int64_t>(0) != 1) {
+        if (db_.exec("SELECT id FROM foo").currentRow().get<int64_t>(0) != 1) {
                 throw TestFailure("inserted row had value %d, expected 1");
         }
 }
@@ -196,7 +196,7 @@ wr::sql::TransactionTests::rollback() // static
         if (txn.committed()) {
                 throw TestFailure("txn.committed() returned true after completion, expected false");
         }
-        if (db_.exec("SELECT id FROM foo").current()) {
+        if (db_.exec("SELECT id FROM foo").currentRow()) {
                 throw TestFailure("query returned row(s); expected none");
         }
 }

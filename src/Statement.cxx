@@ -660,7 +660,7 @@ Statement::begin() -> Row
 //--------------------------------------
 
 WRSQL_API auto
-Statement::current() -> Row
+Statement::currentRow() -> Row
 {
         return Row(*this);
 }
