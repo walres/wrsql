@@ -63,7 +63,7 @@ if (NOT WRUTIL_BUILD_DIR)
                 check_cxx_source_runs(${CHECK_CXX_CODE} HAVE_WRUTIL)
         endif()
         if (NOT HAVE_WRUTIL)
-                message(SEND_ERROR "wrutil library not found. Please either specify -DWRUTIL_ROOT=<dir> where <dir> is the base directory of a pre-installed wrutil package, or place a copy of the wrutil source tree (with directory name \"wrutil\") under the top directory of wrparse.")
+                message(SEND_ERROR "wrutil library not found. Please either specify -DWRUTIL_ROOT=<dir> where <dir> is the base directory of a pre-installed wrutil package, or place a copy of the wrutil source tree (with directory name \"wrutil\") under the top directory of wrsql.")
         endif()
 endif()
 
