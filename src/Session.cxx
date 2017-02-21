@@ -129,7 +129,7 @@ Session::open(
         std::string body_uri = uri.to_string(),  // moved to body_->uri later
                     uri_copy;
 
-        if (!scheme.first.empty()) {
+        if (!scheme.second.empty()) {
                 // currently only SQLite3 is supported
                 if ((scheme.first.compare_nocase(u8"sqlite3") == 0)
                             || (scheme.first.compare_nocase(u8"file") == 0)) {
@@ -141,7 +141,7 @@ Session::open(
                                 utf8_narrow_cvt().from_utf8(uri)));
                 }
         } else {
-                uri_copy = uri.to_string();
+                uri_copy = "file://" + uri.to_string();
         }
 
         sqlite3 *db;
