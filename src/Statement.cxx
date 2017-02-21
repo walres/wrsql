@@ -621,6 +621,17 @@ Statement::bind(
 
 //--------------------------------------
 
+template <> WRSQL_API auto
+Statement::bind(
+        int                   col_no,
+        const file_time_type &val
+) -> this_t &
+{
+        return bind(col_no, file_time_type::clock::to_time_t(val));
+}
+
+//--------------------------------------
+
 void
 Statement::throwBindError(
         int param_no,
@@ -1070,6 +1081,16 @@ Row::get<wr::path>(
 ) const
 {
         return wr::u8path(get<u8string_view>(col_no));
+}
+
+//--------------------------------------
+
+template <> WRSQL_API file_time_type
+Row::get(
+        int col_no
+) const
+{
+        return file_time_type::clock::from_time_t(get<time_t>(col_no));
 }
 
 //--------------------------------------
