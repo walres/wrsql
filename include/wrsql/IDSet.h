@@ -659,12 +659,12 @@ public:
          *      lexicographically greater than the value(s) in \c b or
          *      \c false otherwise
          */
-        friend WRSQL_API bool operator==(const this_t &a, const this_t &b);
-        friend WRSQL_API bool operator!=(const this_t &a, const this_t &b);
-        friend WRSQL_API bool operator<(const this_t &a, const this_t &b);
-        friend WRSQL_API bool operator<=(const this_t &a, const this_t &b);
-        friend WRSQL_API bool operator>(const this_t &a, const this_t &b);
-        friend WRSQL_API bool operator>=(const this_t &a, const this_t &b);
+        friend bool operator==(const this_t &a, const this_t &b);
+        friend bool operator!=(const this_t &a, const this_t &b);
+        friend bool operator<(const this_t &a, const this_t &b);
+        friend bool operator<=(const this_t &a, const this_t &b);
+        friend bool operator>(const this_t &a, const this_t &b);
+        friend bool operator>=(const this_t &a, const this_t &b);
         ///@}
 
         class SQLInterface;  // opaque internal type
@@ -794,10 +794,10 @@ struct Arg;
 struct Params;
 template <typename> struct TypeHandler;
 
-template <> struct TypeHandler<wr::sql::IDSet>
+template <> struct WRSQL_API TypeHandler<wr::sql::IDSet>
 {
-        static WRSQL_API void set(Arg &arg, const wr::sql::IDSet &val);
-        static WRSQL_API bool format(const Params &parms);
+        static void set(Arg &arg, const wr::sql::IDSet &val);
+        static bool format(const Params &parms);
 };
 
 
