@@ -100,6 +100,8 @@ public:
                     bindAfterFetch(),
                     bindUserType(),
                     variadicBind(),
+                    bindDuringActiveStatement1(),
+                    bindDuringActiveStatement2(),
                     resetUnpreppedStatement(),
                     resetPreppedStatement(),
                     resetPreservesBindings(),
@@ -209,6 +211,8 @@ wr::sql::StatementTests::runAll()
         run("bindAfterFetch", 1, &bindAfterFetch);
         run("bindUserType", 1, &bindUserType);
         run("variadicBind", 1, &variadicBind);
+        run("bindDuringActiveStatement", 1, &bindDuringActiveStatement1);
+        run("bindDuringActiveStatement", 2, &bindDuringActiveStatement2);
         run("reset", 1, &resetUnpreppedStatement);
         run("reset", 2, &resetPreppedStatement);
         run("reset", 3, &resetPreservesBindings);
@@ -1253,6 +1257,78 @@ wr::sql::StatementTests::variadicBind() // static
         if (result.get<int64_t>(0) != expected_id) {
                 throw TestFailure("query returned order number %d, expected %d",
                                   result.get<int64_t>(0), expected_id);
+        }
+}
+
+//--------------------------------------
+
+void
+wr::sql::StatementTests::bindDuringActiveStatement1() // static
+{
+        static const char * const CITY[2] = { "NYC", "Sydney" };
+
+        Statement stmt(db_, "SELECT * FROM offices WHERE city=?1");
+        Row row = stmt.begin(CITY[0]);
+                /* statement remains active until an attempt to fetch beyond
+                   the last row, which we never do in this test */
+
+        if (!row) {
+                throw TestFailure("no office rows returned for city \"%s\"",
+                                  CITY[0]);
+        }
+
+        static const int EXPECTED_OFFICE_CODE[2] = { 3, 6 };
+        auto office_code = row.get<int>("code");
+
+        if (office_code != EXPECTED_OFFICE_CODE[0]) {
+                throw TestFailure("got office code %d for city \"%s\", expected %d",
+                                  office_code, CITY[0],
+                                  EXPECTED_OFFICE_CODE[0]);
+        }
+
+        row = stmt.begin(CITY[1]);  // should not throw
+
+        if (!row) {
+                throw TestFailure("no office rows returned for city \"%s\"",
+                                  CITY[1]);
+        }
+
+        office_code = row.get<int>("code");
+
+        if (office_code != EXPECTED_OFFICE_CODE[1]) {
+                throw TestFailure("got office code %d for city \"%s\", expected %d",
+                                  office_code, CITY[1],
+                                  EXPECTED_OFFICE_CODE[1]);
+        }
+}
+
+//--------------------------------------
+
+void
+wr::sql::StatementTests::bindDuringActiveStatement2() // static
+{
+        Statement stmt1(db_, "SELECT * FROM offices WHERE city=?1");
+        stmt1.begin("NYC");
+                /* statement remains active until an attempt to fetch beyond
+                   the last row, which we never do in this test */
+
+        static const char * const SURNAME = "Thompson";
+
+        Statement stmt2(db_, "SELECT * FROM employees WHERE surname=?1");
+        Row       row  = stmt2.begin(SURNAME); // should not throw
+
+        if (!row) {
+                throw TestFailure("no employee rows returned for surname \"%s\"",
+                                  SURNAME);
+        }
+
+        static const ID EXPECTED_EMPLOYEE_NO = 1166;
+
+        auto employee_no = row.get<ID>("number");
+
+        if (employee_no != EXPECTED_EMPLOYEE_NO) {
+                throw TestFailure("got employee number %d for surname \"%s\", expected %d",
+                                  employee_no, SURNAME, EXPECTED_EMPLOYEE_NO);
         }
 }
 

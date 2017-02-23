@@ -296,6 +296,10 @@ Statement::reset() -> this_t &
 WRSQL_API auto
 Statement::clearBindings() -> this_t &
 {
+        if (isActive()) {
+                reset();
+        }
+
         sqlite3_clear_bindings(static_cast<sqlite3_stmt *>(stmt_));
         return *this;
 }
@@ -307,6 +311,10 @@ Statement::bindNull(
         int param_no
 ) -> this_t &
 {
+        if (isActive()) {
+                reset();
+        }
+
         auto status = sqlite3_bind_null(static_cast<sqlite3_stmt *>(stmt_),
                                         param_no);
         if (status != SQLITE_OK) {
@@ -367,6 +375,10 @@ Statement::bind(
         int val
 ) -> this_t &
 {
+        if (isActive()) {
+                reset();
+        }
+
         auto status = sqlite3_bind_int(static_cast<sqlite3_stmt *>(stmt_),
                                        param_no, val);
         if (status != SQLITE_OK) {
@@ -421,6 +433,10 @@ Statement::bind(
         long long val
 ) -> this_t &
 {
+        if (isActive()) {
+                reset();
+        }
+
         auto status = sqlite3_bind_int64(static_cast<sqlite3_stmt *>(stmt_),
                                          param_no, val);
         if (status != SQLITE_OK) {
@@ -459,6 +475,10 @@ Statement::bind(
         double val
 ) -> this_t &
 {
+        if (isActive()) {
+                reset();
+        }
+
         auto status = sqlite3_bind_double(static_cast<sqlite3_stmt *>(stmt_),
                                           param_no, val);
         if (status != SQLITE_OK) {
@@ -475,6 +495,10 @@ Statement::bind(
         const char *text
 ) -> this_t &
 {
+        if (isActive()) {
+                reset();
+        }
+
         auto status = sqlite3_bind_text64(static_cast<sqlite3_stmt *>(stmt_),
                                           param_no, text, strlen(text),
                                           SQLITE_STATIC, SQLITE_UTF8);
@@ -519,6 +543,10 @@ Statement::bind(
         if (!data) {
                 bindNull(param_no);
         } else {
+                if (isActive()) {
+                        reset();
+                }
+
                 int status;
 
                 if (free_blob) {
@@ -561,6 +589,10 @@ Statement::bind(
         const u8string_view &text
 ) -> this_t &
 {
+        if (isActive()) {
+                reset();
+        }
+
         auto status = sqlite3_bind_text64(static_cast<sqlite3_stmt *>(stmt_),
                                           param_no, text.char_data(),
                                           text.bytes(), SQLITE_STATIC,
