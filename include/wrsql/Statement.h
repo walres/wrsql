@@ -217,6 +217,8 @@ public:
          * \brief bind value to statement parameter
          *
          * Type conversions are performed automatically where necessary.
+         * When \c bind() is invoked on an active statement, that statement
+         * is implicitly reset.
          *
          * The following template overload of \c bind can be specialized for
          * user-defined types:
