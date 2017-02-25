@@ -228,7 +228,8 @@ Statement::prepare(
                 sqlite3_stmt *stmt;
                 const char   *end;
 
-                status = sqlite3_prepare_v2(session.body_->db_, sql.char_data(),
+                status = sqlite3_prepare_v2(session.body_->db(),
+                                            sql.char_data(),
                                             numeric_cast<int>(sql.bytes()),
                                             &stmt, &end);
                 switch (status) {

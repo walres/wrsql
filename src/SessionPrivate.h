@@ -51,9 +51,32 @@ using RollbackActions = std::list<Session::RollbackAction>;
 
 //--------------------------------------
 
-struct Session::Body
+class Session::Body
 {
+public:
         using this_t = Body;
+
+        Body(Session &me);
+        ~Body();
+
+        sqlite3 *db() const { return db_; }
+
+        static int callProgressHandler(void *me);
+
+        bool waitForUnlock();
+        static void onUnlock(void **blocked, int num_blocked);
+                                        // sqlite3 unlock notification callback
+
+        Transaction *innerTransaction() const { return inner_txn_; }
+        Transaction *addTransaction(Transaction *txn);
+        void removeTransaction(Transaction *txn);
+        void replaceTransaction(Transaction *before, Transaction *after);
+
+        void transactionCommitted();
+        void transactionRolledBack();
+
+private:
+        friend Session;
 
         Session                 &me_;
         sqlite3                 *db_;
@@ -67,23 +90,6 @@ struct Session::Body
         ProgressHandler          progress_handler_;
         CommitActions            commit_actions_;
         RollbackActions          rollback_actions_;
-
-
-        Body(Session &me);
-        ~Body();
-
-        static int callProgressHandler(void *me);
-
-        bool waitForUnlock();
-        static void onUnlock(void **blocked, int num_blocked);
-                                        // sqlite3 unlock notification callback
-
-        Transaction *addTransaction(Transaction *txn);
-        void removeTransaction(Transaction *txn);
-        void replaceTransaction(Transaction *before, Transaction *after);
-
-        void transactionCommitted();
-        void transactionRolledBack();
 };
 
 

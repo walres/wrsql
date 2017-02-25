@@ -332,7 +332,12 @@ public:
         /**
          * \brief finalize all precompiled registered statements
          */
-        void finalizeStatements();
+        void finalizeRegisteredStatements();
+
+        /**
+         * \brief reset all precompiled registered statements
+         */
+        void resetRegisteredStatements();
 
         /**
          * \brief callback function type for statement execution progress

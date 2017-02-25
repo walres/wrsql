@@ -125,11 +125,11 @@ Session::open(
         const u8string_view &uri
 )
 {
-        auto        scheme = uri.split('\x3a');
+        auto        scheme = uri.split('\x3a');  // ASCII ':'
         std::string body_uri = uri.to_string(),  // moved to body_->uri later
                     uri_copy;
 
-        if (!scheme.second.empty()) {
+        if (!scheme.first.empty() && !scheme.second.empty()) {
                 // currently only SQLite3 is supported
                 if ((scheme.first.compare_nocase(u8"sqlite3") == 0)
                             || (scheme.first.compare_nocase(u8"file") == 0)) {
@@ -141,7 +141,12 @@ Session::open(
                                 utf8_narrow_cvt().from_utf8(uri)));
                 }
         } else {
-                uri_copy = "file://" + uri.to_string();
+                if (scheme.second.empty()) {
+                        // assume to be a plain filename for an SQLite3 database
+                        uri_copy = "file://";
+                } /* else assume to be a special SQLite3 database name
+                     beginning with a colon, such as ":memory:" */
+                uri_copy += uri.to_string();
         }
 
         sqlite3 *db;
@@ -335,11 +340,23 @@ Session::statement(
 //--------------------------------------
 
 WRSQL_API void
-Session::finalizeStatements()
+Session::finalizeRegisteredStatements()
 {
         for (auto &stmt: body_->statements_) {
                 if (stmt) {
                         stmt->finalize();
+                }
+        }
+}
+
+//--------------------------------------
+
+WRSQL_API void
+Session::resetRegisteredStatements()
+{
+        for (auto &stmt: body_->statements_) {
+                if (stmt) {
+                        stmt->reset();
                 }
         }
 }

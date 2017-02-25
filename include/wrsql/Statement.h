@@ -262,6 +262,9 @@ public:
         this_t &bind(int param_no, std::nullptr_t val)
                 { (void) val; return bindNull(param_no); }
 
+        this_t &bind(int param_no, nullopt_t val)
+                { (void) val; return bindNull(param_no); }
+
         this_t &bind(int param_no, char val);
         this_t &bind(int param_no, unsigned char val);
         this_t &bind(int param_no, short val);
@@ -547,6 +550,7 @@ public:
          *      \c false otherwise
          */
         const Statement *statement() const { return stmt_; }
+        Statement *statement() { return stmt_; }
         bool empty() const { return !stmt_ || !stmt_->isActive(); }
         explicit operator bool() const { return !empty(); }
         ///@}

@@ -1161,7 +1161,7 @@ IDSet::SQLInterface::update(
 {
         auto *set_body = static_cast<Body *>(vtab);
         int   conflict_action
-                        = sqlite3_vtab_on_conflict(set_body->db_->body_->db_);
+                        = sqlite3_vtab_on_conflict(set_body->db_->body_->db());
 
         optional<ID> rowid;
         

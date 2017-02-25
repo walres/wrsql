@@ -85,7 +85,8 @@ public:
                     retrieveSession(),
                     bindInvalidIndex(),
                     bindNull(),
-                    bindNullPtr();
+                    bindNullPtr(),
+                    bindNullOpt();
 
         template <typename NumericType> static void bindMinMax();
         template <typename FloatType> static void bindNaN();
@@ -180,6 +181,7 @@ wr::sql::StatementTests::runAll()
         run("bindInvalidIndex", 1, &bindInvalidIndex);
         run("bindNull", 1, &bindNull);
         run("bindNullPtr", 1, &bindNullPtr);
+        run("bindNullOpt", 1, &bindNullOpt);
         run("bindChar", 1, &bindMinMax<char>);
         run("bindUChar", 1, &bindMinMax<unsigned char>);
         run("bindShort", 1, &bindMinMax<short>);
@@ -871,6 +873,18 @@ wr::sql::StatementTests::bindNullPtr() // static
 
 //--------------------------------------
 
+void
+wr::sql::StatementTests::bindNullOpt() // static
+{
+        Statement query(db_, "SELECT ?1");
+        query.bind(1, nullopt);
+        if (!query.begin().isNull(0)) {
+                throw TestFailure("bound null value not returned in result set");
+        }
+}
+
+//--------------------------------------
+
 template <typename NumericType> void
 wr::sql::StatementTests::bindMinMax() // static
 {
@@ -997,7 +1011,7 @@ wr::sql::StatementTests::bindBlob() // static
         // finalize statements to prevent DROP TABLE blocking below
         get.finalize();
         ins.finalize();
-        db_.finalizeStatements();
+        db_.finalizeRegisteredStatements();
 
         db_.exec("DROP TABLE blob_test");
 }
@@ -1049,7 +1063,7 @@ wr::sql::StatementTests::bindBlobWithFree() // static
         // finalize statements to prevent DROP TABLE blocking below
         get.finalize();
         ins.finalize();
-        db_.finalizeStatements();
+        db_.finalizeRegisteredStatements();
 
         db_.exec("DROP TABLE blob_test");
 }

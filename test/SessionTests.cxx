@@ -62,7 +62,8 @@ public:
                     statement1(),
                     statement2(),
                     statement3(),
-                    finalizeStatements(),
+                    finalizeRegisteredStatements(),
+                    resetRegisteredStatements(),
                     hasObject1(),
                     hasObject2(),
                     copyConstruct(),
@@ -119,7 +120,8 @@ wr::sql::SessionTests::runAll()
         run("statement", 1, &statement1);
         run("statement", 2, &statement2);
         run("statement", 3, &statement3);
-        run("finalizeStatements", 1, &finalizeStatements);
+        run("finalizeRegisteredStatements", 1, &finalizeRegisteredStatements);
+        run("resetRegisteredStatements", 1, &resetRegisteredStatements);
         run("hasObject", 1, &hasObject1);
         run("hasObject", 2, &hasObject2);
         run("interrupt", 1, &serialisedInterrupt);
@@ -432,7 +434,7 @@ wr::sql::SessionTests::statement3() // static
 //--------------------------------------
 
 void
-wr::sql::SessionTests::finalizeStatements() // static
+wr::sql::SessionTests::finalizeRegisteredStatements() // static
 {
         static size_t GET_EMPLOYEES
                         = registerStatement("SELECT * FROM employees");
@@ -441,13 +443,35 @@ wr::sql::SessionTests::finalizeStatements() // static
         Statement &get_employees = db.statement(GET_EMPLOYEES);
 
         if (!get_employees.isPrepared()) {
-                throw TestFailure("get_employees statement not prepared after call to db.statement()");
+                throw TestFailure("statement not prepared after call to db.statement()");
         }
 
-        db.finalizeStatements();
+        db.finalizeRegisteredStatements();
 
         if (!get_employees.isFinalized()) {
-                throw TestFailure("get_employees statement not finalized after call to db.finalizeStatements()");
+                throw TestFailure("statement not finalized after call to db.finalizeRegisteredStatements()");
+        }
+}
+
+//--------------------------------------
+
+void
+wr::sql::SessionTests::resetRegisteredStatements() // static
+{
+        static size_t GET_EMPLOYEES
+                        = registerStatement("SELECT * FROM employees");
+
+        SampleDB db(defaultURI());
+        Row      row = db.exec(GET_EMPLOYEES);
+
+        if (!row) {
+                throw TestFailure("query returned no results");
+        }
+
+        db.resetRegisteredStatements();
+
+        if (row || row.statement()->isActive()) {
+                throw TestFailure("statement not reset by call to db.resetRegisteredStatements()");
         }
 }
 

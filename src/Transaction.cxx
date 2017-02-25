@@ -62,7 +62,7 @@ Transaction::Transaction(
 WRSQL_API
 Transaction::~Transaction()
 {
-        if (session_) {
+        if (active()) {
                 rollback();
         }
 }
@@ -75,12 +75,12 @@ Transaction::operator=(
 ) -> this_t &
 {
         if (&other != this) {
-                if (session_) {
+                if (active()) {
                         rollback();
                 }
                 std::swap(session_, other.session_);
                 std::swap(outer_, other.outer_);
-                if (session_) {
+                if (active()) {
                         session_.ptr()->body_->replaceTransaction(&other, this);
                 }
         }
@@ -89,11 +89,6 @@ Transaction::operator=(
 
 //--------------------------------------
 
-enum { DEFERRED, IMMEDIATE, EXCLUSIVE };
-
-inline int upgrade(int mode)
-        { return mode == DEFERRED ? IMMEDIATE : EXCLUSIVE; }
-
 WRSQL_API auto
 Transaction::begin(
         Session       &session,
@@ -101,19 +96,20 @@ Transaction::begin(
 ) -> this_t  // static
 {
         this_t txn;
-        int    mode = DEFERRED;
+        bool   nested = session.body_->innerTransaction() != nullptr;
 
-        do try {
-                txn.begin_(&session, mode);
-                code(txn);
-                txn.commit();
-                break;
-        } catch (Busy &) {
-                if (txn.nested() || !txn.active()) {
-                        throw;
-                } else {
-                        txn.rollback();
-                        mode = upgrade(mode);
+        do {
+                try {
+                        txn.begin_(&session);
+                        code(txn);
+                        txn.commit();
+                        break;
+                } catch (Busy &) {
+                        if (txn.nested()) {
+                                throw;
+                        } else {
+                                txn.rollback();
+                        }
                 }
         } while (true);
 
@@ -130,31 +126,12 @@ Transaction::begin_(
 {
         int mode;
 
-        va_list args;
-        va_start(args, session);
-        mode = va_arg(args, int);
-        va_end(args);
-
-        static const size_t
-                        BEGIN_DEFERRED  = registerStatement("BEGIN"),
-                        BEGIN_IMMEDIATE = registerStatement("BEGIN IMMEDIATE"),
-                        BEGIN_EXCLUSIVE = registerStatement("BEGIN EXCLUSIVE");
-
-        outer_ = session->body_->addTransaction(this);
-
-        if (!outer_) {
-                size_t stmt_id;
-
-                switch (mode) {
-                default:
-                case DEFERRED: stmt_id = BEGIN_DEFERRED; break;
-                case IMMEDIATE: stmt_id = BEGIN_IMMEDIATE; break;
-                case EXCLUSIVE: stmt_id = BEGIN_EXCLUSIVE; break;
-                }
-
-                session->exec(stmt_id);
+        if (!session->body_->innerTransaction()) {  // will not be nested
+                static const size_t BEGIN_TXN = registerStatement("BEGIN");
+                session->exec(BEGIN_TXN);  // may throw
         }
 
+        outer_ = session->body_->addTransaction(this);
         session_ = session;
 }
 
@@ -165,10 +142,10 @@ Transaction::commit() -> this_t &
 {
         static const size_t COMMIT = sql::registerStatement("COMMIT");
 
-        if (session_) {
+        if (active()) {
                 auto &session = *session_;
 
-                if (!outer_) {  // this is the outermost transaction
+                if (!nested()) {  // this is the outermost transaction
                         session.exec(COMMIT);
                         session.body_->transactionCommitted();
                 }
@@ -192,11 +169,11 @@ Transaction::rollback() -> this_t &
 {
         static const size_t ROLLBACK = sql::registerStatement("ROLLBACK");
 
-        if (session_) {
+        if (active()) {
                 auto &session = *session_;
                 session_ = nullptr;
 
-                if (!sqlite3_get_autocommit(session.body_->db_)) {
+                if (!sqlite3_get_autocommit(session.body_->db())) {
                         session.exec(ROLLBACK);
                 } /* else no transaction active, probably rolled back
                      automatically by SQLite error */

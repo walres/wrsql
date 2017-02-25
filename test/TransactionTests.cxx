@@ -23,9 +23,10 @@
  * \endparblock
  */
 #include <condition_variable>
-#include <iostream>
 #include <mutex>
 #include <thread>
+
+#include <wrutil/uiostream.h>
 
 #include <wrsql/Error.h>
 #include <wrsql/Session.h>
@@ -261,83 +262,90 @@ wr::sql::TransactionTests::busyHandling() // static
 
 void
 wr::sql::TransactionTests::nestedBusyHandling() // static
-try {
+{
         std::mutex              mutex;
-        std::condition_variable writer_proceed_cv, reader_proceed_cv;
-        bool                    writer_proceed = false,
-                                reader_proceed = false;
+        std::condition_variable parent_proceed_cv, child_proceed_cv;
+        bool                    parent_proceed = false,
+                                child_proceed = false;
         /*
-         * The reader thread
+         * The child thread
          */
-        std::thread reader([&]{
-                std::unique_lock<std::mutex> reader_lock(mutex);
+        std::thread child([&]{
+                std::unique_lock<std::mutex> child_lock(mutex);
 
-                // wait until writer enters nested transaction
-                reader_proceed_cv.wait(reader_lock,
-                                       [&]{ return reader_proceed; });
-                reader_proceed = false;
+                // wait until parent enters nested transaction
+                child_proceed_cv.wait(child_lock, [&]{ return child_proceed; });
+                child_proceed = false;
 
                 Session db2(db_);
-                for (Row r: db2.exec("SELECT * FROM employees")) {
-                        // wait until writer starts waiting for writer_proceed
-                        writer_proceed = true;
-                        writer_proceed_cv.notify_all();
-                        reader_proceed_cv.wait(reader_lock,
-                                               [&]{ return reader_proceed; } );
-                        break;
-                }
+
+                db2.beginTransaction([&](Transaction &txn) {
+                        db2.exec("INSERT INTO offices (code, city, phone, "
+                                 "address_line_1, address_line_2, state, "
+                                 "country, postal_code, territory) "
+                                 "VALUES ('8', 'Toronto', '+1 416 123 4567', "
+                                 "'2476 Wellington Street', NULL, 'Ontario', "
+                                 "'Canada', 'M9C 3J5', 'NA')");
+
+                        // wait until parent starts waiting for parent_proceed
+                        parent_proceed = true;
+                        parent_proceed_cv.notify_all();
+                        child_proceed_cv.wait(child_lock,
+                                              [&]{ return child_proceed; } );
+                });
         });
 
         /*
-         * The writer thread
+         * The parent thread
          */
         int retry_count = -1;
 
         db_.beginTransaction([&](Transaction &) {
-                std::unique_lock<std::mutex> writer_lock(mutex);
+                std::unique_lock<std::mutex> parent_lock(mutex);
 
                 if (++retry_count > 0) {  // 2nd+ time around
-                        /* allow the reader to complete so the nested INSERT
+                        /* allow the child to complete so the nested INSERT
                            attempt should succeed */
-                        reader_proceed = true;
-                        writer_lock.unlock();
-                        reader_proceed_cv.notify_all();
-                        reader.join();
+                        child_proceed = true;
+                        parent_lock.unlock();
+                        child_proceed_cv.notify_all();
+                        child.join();
                 }
 
                 try {  // do not expect this to fail
-                        db_.exec("INSERT INTO offices (code, city, phone, "
-                                "address_line_1, address_line_2, state, "
-                                "country, postal_code, territory) "
-                                "VALUES ('8', 'Toronto', '+1 416 123 4567', "
-                                "'2476 Wellington Street', NULL, 'Ontario', "
-                                "'Canada', 'M9C 3J5', 'NA')");
+                        for (Row row: db_.exec("SELECT * FROM employees")) {
+                                (void) row;
+                                break;
+                        }
                 } catch (SQLException &e) {  // includes Busy, Error & Interrupt
-                        throw TestFailure("failed to insert Toronto office (%s)",
+                        throw TestFailure("failed to query employees (%s)",
                                           e.what());
                 }
 
-                db_.beginTransaction([&](Transaction &) {
-                        // if reader exists, tell it to continue
-                        reader_proceed = true;
-                        reader_proceed_cv.notify_all();
+                db_.beginTransaction([&](Transaction &txn) {
+                        // if child exists, tell it to continue
+                        child_proceed = true;
+                        child_proceed_cv.notify_all();
 
-                        // wait for reader to begin its SELECT
-                        writer_proceed_cv.wait(writer_lock,
-                                               [&]{ return writer_proceed; });
+                        // wait for child to begin its SELECT
+                        parent_proceed_cv.wait(parent_lock,
+                                               [&]{ return parent_proceed; });
 
                         db_.exec("INSERT INTO employees (number, surname, "
                                 "forename, extension, email, office_code, "
                                 "reports_to, job_title) VALUES (9876, 'Doe', "
-                                "'John', 'x9999', 'jdoe@classicmodelcars.com', "
-                                "8, 1143, 'Sales Rep')");
+                                "'John', 'x9999', 'jdoe@classicmodelcars.com',"
+                                "7, 1143, 'Sales Rep')");
+
+                        // should not get here on first try
+                        if (retry_count == 0) {
+                                child.detach();
+                                throw TestFailure("nested transaction did not throw sql::Busy as expected");
+                        }
                 });
         });
 
         if (retry_count != 1) {
                 throw TestFailure("expected busy condition on first transaction attempt");
         }
-} catch (Error &e) {
-        std::cerr << "*** ERROR: " << e.what() << '\n';
-        throw;
 }
