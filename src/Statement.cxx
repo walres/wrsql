@@ -329,6 +329,17 @@ Statement::bindNull(
 WRSQL_API auto
 Statement::bind(
         int  param_no,
+        bool val
+) -> this_t &
+{
+        return bind(param_no, static_cast<int>(val));
+}
+
+//--------------------------------------
+
+WRSQL_API auto
+Statement::bind(
+        int  param_no,
         char val
 ) -> this_t &
 {
