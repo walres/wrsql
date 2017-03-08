@@ -100,7 +100,8 @@ public:
                     bindOptional(),
                     bindAfterFetch(),
                     bindUserType(),
-                    variadicBind(),
+                    variadicBind1(),
+                    variadicBind2(),
                     bindDuringActiveStatement1(),
                     bindDuringActiveStatement2(),
                     resetUnpreppedStatement(),
@@ -212,7 +213,8 @@ wr::sql::StatementTests::runAll()
         run("bindOptional", 1, &bindOptional);
         run("bindAfterFetch", 1, &bindAfterFetch);
         run("bindUserType", 1, &bindUserType);
-        run("variadicBind", 1, &variadicBind);
+        run("variadicBind", 1, &variadicBind1);
+        run("variadicBind", 2, &variadicBind2);
         run("bindDuringActiveStatement", 1, &bindDuringActiveStatement1);
         run("bindDuringActiveStatement", 2, &bindDuringActiveStatement2);
         run("reset", 1, &resetUnpreppedStatement);
@@ -1258,7 +1260,7 @@ wr::sql::StatementTests::bindUserType() // static
 //--------------------------------------
 
 void
-wr::sql::StatementTests::variadicBind() // static
+wr::sql::StatementTests::variadicBind1() // static
 {
         Statement get_customer_orders(db_, "SELECT number FROM orders "
                                            "WHERE orders.customer_no=?1 "
@@ -1271,6 +1273,32 @@ wr::sql::StatementTests::variadicBind() // static
         if (result.get<int64_t>(0) != expected_id) {
                 throw TestFailure("query returned order number %d, expected %d",
                                   result.get<int64_t>(0), expected_id);
+        }
+}
+
+//--------------------------------------
+
+void
+wr::sql::StatementTests::variadicBind2() // static
+{
+        Statement find_customers_by_surname(db_, "SELECT name FROM customers "
+                                                 "WHERE contact_surname=? "
+                                                 "AND city=? ORDER BY number");
+
+        static const char * const EXPECTED_NAMES[] = {
+                u8"Muscle Machine Inc", u8"Toys4GrownUps.com",
+                u8"Boards & Toys Co.", u8"Online Diecast Creations Co."
+        };
+
+        size_t i = 0;
+
+        for (Row row: find_customers_by_surname("Young")) {
+                auto name = row.get<u8string_view>("name");
+                if (name != EXPECTED_NAMES[i]) {
+                        throw TestFailure("result row 2 has name \"%s\", expected \"%s\"",
+                                          name, EXPECTED_NAMES[i]);
+                }
+                ++i;
         }
 }
 

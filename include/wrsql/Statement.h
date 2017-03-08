@@ -337,6 +337,30 @@ public:
          * If fewer arguments are specified than there are parameters then
          * the remaining bound parameters are cleared to null values.
          *
+         * The function-call operator, <code>operator()</code>, provides a
+         * convenient alternative syntax for \c bindAll(), making the
+         * following code
+         *
+         * \code{.cpp}
+         * wr::sql::Statement query(db, "SELECT number FROM employees "
+         *                              "WHERE surname=? AND forename=?");
+         *
+         * for (wr::sql::Row result: query("Bloggs", "Fred")) {
+         *         // do something with result here
+         * }
+         * \endcode
+         *
+         * equivalent to
+         *
+         * \code{.cpp}
+         * wr::sql::Statement query(db, "SELECT number FROM employees "
+         *                              "WHERE surname=? AND forename=?");
+         *
+         * for (wr::sql::Row result: query.bindAll("Bloggs", "Fred")) {
+         *         // do something with result here
+         * }
+         * \endcode
+         *
          * \param [in] args...
          *      zero or more values to bind
          *
@@ -356,6 +380,9 @@ public:
 
         template <typename ...Args> this_t &bindAll()
                 { return clearBindings(); }
+
+        template <typename ...Args> this_t &operator()(Args &&...args)
+                { return bindAll(std::forward<Args>(args)...); }
         ///@}
 
         ///@{
