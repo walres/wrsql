@@ -665,6 +665,9 @@ public:
                                                 optional<T> &value_out) const
                 { value_out = getNullable<T>(col_no); return *this; }
 
+        template <size_t N> const this_t &get(int col_no, char (&val)[N]) const
+                { return getCharArray(col_no, val, N); }
+
         template <typename T> const this_t &get(const u8string_view &col_name,
                                                 T &value_out) const
                 { value_out = get<T>(col_name); return *this; }
@@ -672,6 +675,10 @@ public:
         template <typename T> const this_t &get(const u8string_view &col_name,
                                                 optional<T> &value_out) const
                 { value_out = getNullable<T>(col_name); return *this; }
+
+        template <size_t N> const this_t &get(const u8string_view &col_name,
+                                              char (&val)[N]) const
+                { return getCharArray(colNo_throw(col_name), val, N); }
         ///@}
 
         ///@{
@@ -741,6 +748,9 @@ public:
         ///@}
 
 private:
+        const this_t &getCharArray(int col_no, char *value_out,
+                                   size_t size) const;
+
         Statement *stmt_;
 };
 

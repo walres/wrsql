@@ -1139,6 +1139,22 @@ Row::get(
 
 //--------------------------------------
 
+WRSQL_API auto
+Row::getCharArray(
+        int     col_no,
+        char   *value_out,
+        size_t  size
+) const -> const this_t &
+{
+        auto value = get<u8string_view>(col_no);
+        size = std::min(size - 1, value.bytes());
+        strncpy(value_out, value.char_data(), size);
+        value_out[size] = '\0';
+        return *this;
+}
+
+//--------------------------------------
+
 WRSQL_API int
 Row::numCols() const
 {
