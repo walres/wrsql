@@ -644,7 +644,7 @@ Statement::bind(
 template <> WRSQL_API auto
 Statement::bind(
         int                     param_no,
-        const std::string_view &text
+        const std_string_view &text
 ) -> this_t &
 {
         return bind(param_no, u8string_view(text));
