@@ -94,8 +94,8 @@ struct IDSet::Body :
         size_type erase(ID id);
         size_type count(ID id) const;
 
-        storage_type  storage_;
-        Session      *db_ = nullptr;
+        storage_type   storage_;
+        const Session *db_ = nullptr;
 };
 
 

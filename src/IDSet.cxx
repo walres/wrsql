@@ -67,7 +67,7 @@ IDSet::IDSet(
 
 WRSQL_API
 IDSet::IDSet(
-        Session &db
+        const Session &db
 ) :
         this_t()
 {
@@ -78,7 +78,7 @@ IDSet::IDSet(
 
 WRSQL_API
 IDSet::IDSet(
-        Session                   &db,
+        const Session             &db,
         std::initializer_list<ID>  ids
 ) :
         this_t()
@@ -91,8 +91,8 @@ IDSet::IDSet(
 
 WRSQL_API
 IDSet::IDSet(
-        Session      &db,
-        const this_t &other
+        const Session &db,
+        const this_t  &other
 ) :
         this_t()
 {
@@ -120,6 +120,18 @@ IDSet::IDSet(
         this_t()
 {
         *this = std::move(other);
+}
+
+//--------------------------------------
+
+WRSQL_API
+IDSet::IDSet(
+        Statement &stmt,
+        int        col_no
+) :
+        this_t(*(stmt.session()))
+{
+        insert(stmt, col_no);
 }
 
 //--------------------------------------
@@ -177,7 +189,7 @@ IDSet::operator=(
 
 WRSQL_API auto
 IDSet::attach(
-        Session &db
+        const Session &db
 ) -> this_t &
 {
         if (&db == body_->db_) {
@@ -676,7 +688,7 @@ IDSet::swap(
                    table names */
                 body_->storage_.swap(other.body_->storage_);
 
-                Session *db = this->db(), *other_db = other.db();
+                const Session *db = this->db(), *other_db = other.db();
 
                 if (db != other_db) {
                         other.detach();
@@ -768,7 +780,7 @@ IDSet::equal_range(
 
 //--------------------------------------
 
-WRSQL_API Session *IDSet::db() const           { return body_->db_; }
+WRSQL_API const Session *IDSet::db() const     { return body_->db_; }
 WRSQL_API ID IDSet::operator[](size_t i) const { return body_->storage_[i]; }
 
 WRSQL_API bool IDSet::empty() const { return body_->storage_.empty(); }

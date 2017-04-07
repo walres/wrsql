@@ -110,9 +110,13 @@ public:
         IDSet(const this_t &other);
         IDSet(this_t &&other);
         IDSet(std::initializer_list<ID> ids);
-        IDSet(Session &db);
-        IDSet(Session &db, const this_t &other);
-        IDSet(Session &db, std::initializer_list<ID> ids);
+        IDSet(const Session &db);
+        IDSet(const Session &db, const this_t &other);
+        IDSet(const Session &db, std::initializer_list<ID> ids);
+        IDSet(Statement &stmt, int col_no = 0);
+
+        template <typename SrcIter> IDSet(SrcIter first, SrcIter last) : IDSet()
+                { insert(first, last); }
         ///@}
 
         /**
@@ -183,7 +187,7 @@ public:
          *
          * \return reference to \c *this
          */
-        this_t &attach(Session &db);
+        this_t &attach(const Session &db);
 
         /**
          * \brief remove an IDSet from a previously attached database
@@ -200,7 +204,7 @@ public:
          * \return pointer to the database connection if attached or
          *      \c false otherwise
          */
-        Session *db() const;
+        const Session *db() const;
 
         ///@{
         /**
