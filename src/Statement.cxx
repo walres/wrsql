@@ -634,7 +634,17 @@ Statement::bind(
         const std::string &text
 ) -> this_t &
 {
-        return bind(param_no, u8string_view(text));
+        if (isActive()) {
+                reset();
+        }
+
+        auto status = sqlite3_bind_text64(static_cast<sqlite3_stmt *>(stmt_),
+                                          param_no, text.data(), text.size(),
+                                          SQLITE_TRANSIENT, SQLITE_UTF8);
+        if (status != SQLITE_OK) {
+                throwBindError(param_no, status);
+        }
+        return *this;
 }
 
 //--------------------------------------
