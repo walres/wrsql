@@ -1697,15 +1697,16 @@ wr::sql::StatementTests::registerStatement() // static
                 wr::sql::registerStatement(
                                 "SELECT code FROM offices WHERE city=?");
 
-        Row r = db_.exec(FIND_OFFICE_AT, "Tokyo");
+        auto stmt = db_.exec(FIND_OFFICE_AT, "Tokyo");
 
-        if (!r) {
-                throw TestFailure("no row returned");
+        if (!stmt->currentRow()) {
+                throw TestFailure("no results returned");
         } else {
                 static const int TOKYO_CODE = 5;
-                if (r.get<int>(0) != TOKYO_CODE) {
+                auto code = stmt->currentRow().get<int>(0);
+                if (code != TOKYO_CODE) {
                         throw TestFailure("code returned was %d, expected %d",
-                                          r.get<int>(0), TOKYO_CODE);
+                                          code, TOKYO_CODE);
                 }
         }
 }

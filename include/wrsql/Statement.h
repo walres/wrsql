@@ -28,6 +28,10 @@
 
 #include <functional>
 #include <utility>
+
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+#include <boost/smart_ptr/intrusive_ref_counter.hpp>
+
 #include <wrutil/optional.h>
 #include <wrutil/tagged_ptr.h>
 #include <wrsql/Config.h>
@@ -64,10 +68,12 @@ class Row;  // defined below
  * \class wr::sql::Statement
  * \brief compiled SQL statement
  */
-class WRSQL_API Statement
+class WRSQL_API Statement : public boost::intrusive_ref_counter<Statement>
 {
 public:
         using this_t = Statement;
+        using Ptr = boost::intrusive_ptr<this_t>;
+        using ConstPtr = boost::intrusive_ptr<const this_t>;
 
         ///@{
         /**

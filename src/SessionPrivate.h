@@ -45,7 +45,7 @@ namespace sql {
 
 class Transaction;
 
-using RegisteredStmts = std::vector<std::unique_ptr<Statement>>;
+using RegisteredStmts = std::vector<Statement::Ptr>;
 using CommitActions   = std::list<Session::CommitAction>;
 using RollbackActions = std::list<Session::RollbackAction>;
 

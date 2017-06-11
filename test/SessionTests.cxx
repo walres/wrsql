@@ -403,31 +403,44 @@ wr::sql::SessionTests::statement2() // static
 }
 
 //--------------------------------------
-
+/**
+ * Ensure that a repeated call to `Session::statement()`, before all rows
+ * from the first call have been fetched, returns a copy of the cached
+ * `Statement` object.
+ */
 void
 wr::sql::SessionTests::statement3() // static
 {
-        static size_t GET_LONDON_PHONE_NO = registerStatement(
-                        "SELECT phone FROM offices WHERE city = 'London'");
+        static size_t GET_TOKYO_CODE = registerStatement(
+                        "SELECT code FROM offices WHERE city = 'Tokyo'");
 
-        SampleDB    db(defaultURI());
-        size_t      n = 0;
-        std::string phone_no;
+        SampleDB       db(defaultURI());
+        Statement::Ptr stmt[2];
 
-        db.statement(GET_LONDON_PHONE_NO).finalize();
+        {
+                Session::ExecResult result[2] = { db.exec(GET_TOKYO_CODE),
+                                                  db.exec(GET_TOKYO_CODE) };
 
-        static const char *EXPECTED_PHONE_NO = "+44 20 7877 2041";
+                stmt[0] = static_cast<Statement::Ptr>(result[0]);
+                stmt[1] = static_cast<Statement::Ptr>(result[1]);
 
-        for (Row row: db.exec(GET_LONDON_PHONE_NO)) {
-                row.get(0, phone_no);
-                ++n;
+                if (stmt[0] == stmt[1]) {
+                        throw TestFailure("second call to db.exec() returned same Statement object");
+                }
         }
 
-        if (n != 1) {
-                throw TestFailure("db.exec() returned %u rows, expected %u", n, 1);
-        } else if (phone_no != EXPECTED_PHONE_NO) {
-                throw TestFailure("db.exec() returned phone number \"%s\", expected \"%s\"",
-                                  phone_no, EXPECTED_PHONE_NO);
+        if (stmt[0]->isActive()) {
+                throw TestFailure("cached Statement object remains active outside scope of db.exec() call");
+        }
+        if (stmt[1]->isActive()) {
+                throw TestFailure("clone of original Statement object remains active outside scope of db.exec() call");
+        }
+
+        // db.exec() should now return the original cached Statement object
+        auto result = db.exec(GET_TOKYO_CODE);
+
+        if (static_cast<Statement::Ptr>(result) != stmt[0]) {
+                throw TestFailure("db.exec() did not return cached Statement object after it became inactive");
         }
 }
 
@@ -439,16 +452,16 @@ wr::sql::SessionTests::finalizeRegisteredStatements() // static
         static size_t GET_EMPLOYEES
                         = registerStatement("SELECT * FROM employees");
 
-        SampleDB   db(defaultURI());
-        Statement &get_employees = db.statement(GET_EMPLOYEES);
+        SampleDB db(defaultURI());
+        auto     get_employees = db.statement(GET_EMPLOYEES);
 
-        if (!get_employees.isPrepared()) {
+        if (!get_employees->isPrepared()) {
                 throw TestFailure("statement not prepared after call to db.statement()");
         }
 
         db.finalizeRegisteredStatements();
 
-        if (!get_employees.isFinalized()) {
+        if (!get_employees->isFinalized()) {
                 throw TestFailure("statement not finalized after call to db.finalizeRegisteredStatements()");
         }
 }
@@ -462,15 +475,15 @@ wr::sql::SessionTests::resetRegisteredStatements() // static
                         = registerStatement("SELECT * FROM employees");
 
         SampleDB db(defaultURI());
-        Row      row = db.exec(GET_EMPLOYEES);
+        auto     stmt = db.exec(GET_EMPLOYEES);
 
-        if (!row) {
+        if (!stmt->currentRow()) {
                 throw TestFailure("query returned no results");
         }
 
         db.resetRegisteredStatements();
 
-        if (row || row.statement()->isActive()) {
+        if (stmt->currentRow() || stmt->isActive()) {
                 throw TestFailure("statement not reset by call to db.resetRegisteredStatements()");
         }
 }

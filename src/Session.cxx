@@ -47,6 +47,16 @@ static int collateAlphaNum(void *context, int a_len, const void *a,
 
 //--------------------------------------
 
+WRSQL_API Statement::Ptr
+Session::ExecResult::release()
+{
+        auto released = stmt_;
+        stmt_.reset();
+        return released;
+}
+
+//--------------------------------------
+
 Session::Body::Body(
         Session &me
 ) :
@@ -213,7 +223,8 @@ Session::hasObject(
         static const size_t HAS_OBJECT = registerStatement(
                 "SELECT rootpage FROM sqlite_master WHERE type=? AND name=?");
 
-        return !statement(HAS_OBJECT).begin(type, name).empty();
+        auto has_object = statement(HAS_OBJECT);
+        return !has_object->begin(type, name).empty();
 }
 
 //--------------------------------------
@@ -312,7 +323,7 @@ Session::vacuum()
 
 //--------------------------------------
 
-WRSQL_API Statement &
+WRSQL_API Statement::Ptr
 Session::statement(
         size_t id
 ) const
@@ -325,16 +336,21 @@ Session::statement(
                 body_->statements_.resize(id + 1);
         }
 
-        auto &stmt = body_->statements_[id];
+        Statement::Ptr &cached_stmt = body_->statements_[id],
+                        stmt        = cached_stmt;
 
-        if (!stmt) {
-                stmt.reset(new Statement);
+        if (!cached_stmt) {
+                cached_stmt.reset(new Statement);
+                stmt = cached_stmt;
+        } else if (stmt->isActive()) {
+                stmt.reset(new Statement(*cached_stmt));
         }
+
         if (!stmt->isPrepared()) {
                 stmt->prepare(*this, registeredStatement(id));
         }
 
-        return *stmt;
+        return stmt;
 }
 
 //--------------------------------------

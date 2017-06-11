@@ -26,6 +26,10 @@
 #define WRSQL_SESSION_H
 
 #include <functional>
+
+#include <boost/smart_ptr/intrusive_ptr.hpp>
+#include <boost/smart_ptr/intrusive_ref_counter.hpp>
+
 #include <wrutil/u8string_view.h>
 #include <wrsql/Config.h>
 #include <wrsql/Statement.h>
@@ -52,10 +56,12 @@ class SessionTests;
  * To maintain thread safety it is recommended that each thread uses its own
  * dedicated Session object(s).
  */
-class WRSQL_API Session
+class WRSQL_API Session : public boost::intrusive_ref_counter<Session>
 {
 public:
         using this_t = Session;
+        using Ptr = boost::intrusive_ptr<this_t>;
+        using ConstPtr = boost::intrusive_ptr<const this_t>;
 
         ///@{
         /**
@@ -178,6 +184,73 @@ public:
                                                    Args &&...args) const;
 
         /**
+         * `Statement` object wrapper returned by `Session::exec(size_t, ...)`
+         * supporting use in C++11 range-based `for` and effecting automatic
+         * reset of the underlying `Statement` upon exiting the scope of the
+         * call to `Session::exec()`.
+         */
+        class WRSQL_API ExecResult
+        {
+        public:
+                using this_t = ExecResult;
+
+                ///@{
+                /// \brief constructor
+                ExecResult(Statement::Ptr stmt) : stmt_(stmt) {}
+
+                ExecResult(const this_t &) = delete;
+                ExecResult(this_t &&) = default;
+                ///@}
+
+                /// \brief destructor
+                ~ExecResult()
+                {
+                        if (*this) {
+                                stmt_->reset();
+                        }
+                }
+
+                ///@{
+                /// \brief assignment operator
+                this_t &operator=(const this_t &) = delete;
+                this_t &operator=(this_t &&) = default;
+                ///@}
+
+                ///@{
+                /// \brief range-based `for` support
+                Row begin() { return stmt_->currentRow(); }
+                Row end()   { return stmt_->end(); }
+                ///@}
+
+                ///@{
+                /// \brief provide access to underlying `Statement` object
+                Statement *operator->() { return stmt_.get(); }
+                Statement &operator*() { return *stmt_; }
+                explicit operator Statement::Ptr() const { return stmt_; }
+                ///@}
+
+                /**
+                 * \brief take control of the underlying `Statement` object
+                 *
+                 * Return a reference-counted pointer to the underlying
+                 * `Statement` object, leaving `this` no longer referencing
+                 * any `Statement` object.
+                 *
+                 * \return underlying `Statement` object
+                 */
+                Statement::Ptr release();
+
+                /**
+                 * \brief determine if `this` references a row
+                 */
+                explicit operator bool() const
+                        { return stmt_ && stmt_->isActive(); }
+
+        private:
+                Statement::Ptr stmt_;
+        };
+
+        /**
          * \brief execute precompiled statement
          *
          * \param [in] stmt_id
@@ -188,8 +261,7 @@ public:
          *      registered statement, in order of appearance (optional
          *      depending on statement)
          *
-         * \return reference to a precompiled Statement object dedicated to
-         *      the invoking Session object
+         * \return executed `Statement` object
          *
          * \throw std::invalid_argument
          *      \c stmt_id was not recognised
@@ -210,7 +282,7 @@ public:
          *      (or possibly a progress handler invoked by the calling
          *      thread) 
          */
-        template <typename ...Args> Statement &exec(size_t stmt_id,
+        template <typename ...Args> ExecResult exec(size_t stmt_id,
                                                     Args &&...args) const;
 
         /**
@@ -317,9 +389,27 @@ public:
         /**
          * \brief return precompiled registered statement
          *
+         * For greater efficiency the wrSQL library has a mechanism for
+         * registering SQL statements for repeated usage without having to
+         * recreate `Statement` objects every time (avoiding memory allocations,
+         * reparsing SQL etc). The function `wr::sql::registerStatement()` is
+         * invoked with the desired SQL text, returning an ID number
+         * corresponding to that statement. This is later passed to
+         * `Session::statement()` to retrieve a `Statement` object corresponding
+         * to it. For every registered ID `Session` caches a `Statement` object
+         * for every thread that has invoked `Session::statement()` with that
+         * ID. To support reentrant usage of a given statement
+         * `Session::statement()` returns a copy of the cached `Statement`
+         * object if the cached object is already active.
+         *
          * \param [in] stmt_id
          *      ID of statement as returned by a prior call to
          *      \c wr::sql::registerStatement()
+         *
+         * \return reference-counted pointer to corresponding precompiled
+         *      `Statement` object; if the default `Statement` object for the
+         *      current thread is already active, a private copy of that object
+         *      is returned instead.
          *
          * \throw std::invalid_argument
          *      \c stmt_id was not recognised
@@ -327,7 +417,7 @@ public:
          *      the statement could not be compiled due to an error in the
          *      original SQL
          */
-        Statement &statement(size_t ix) const;
+        Statement::Ptr statement(size_t ix) const;
 
         /**
          * \brief finalize all precompiled registered statements
@@ -499,14 +589,14 @@ Session::exec(
 
 //--------------------------------------
 
-template <typename ...Args> inline Statement &
+template <typename ...Args> inline auto
 Session::exec(
         size_t      stmt_id,
         Args   &&...args
-) const
+) const -> ExecResult
 {
-        Statement &q = statement(stmt_id);
-        q.begin(std::forward<Args>(args)...);
+        Statement::Ptr q = statement(stmt_id);
+        q->begin(std::forward<Args>(args)...);
         return q;
 }
 
